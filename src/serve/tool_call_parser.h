@@ -41,9 +41,12 @@ struct ToolArgumentTypeContracts {
 
 ToolArgumentTypeContracts build_tool_argument_type_contracts(const GenerationRequest& request);
 
+// Parse Qwen's XML-like tool-call format. In tolerant mode, a complete function
+// call is recovered even when the model adds wrapper garbage or suffix text.
 ParsedToolCallOutput parse_qwen_tool_call_output(const std::string& text,
                                                  std::size_t max_tool_name_length,
-                                                 const ToolArgumentTypeContracts& contracts);
+                                                 const ToolArgumentTypeContracts& contracts,
+                                                 bool tolerant = false);
 
 // Incrementally publishes text that is provably outside a possible Qwen
 // <tool_call> suffix. At terminal time, a valid tool response discards the

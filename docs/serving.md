@@ -539,6 +539,7 @@ The table lists executable defaults. The startup example selects a long-context 
 | `--max-cache-markers-per-request N` | caller marker input-complexity bound | `4` |
 | `--no-thinking` | disable thinking by default | thinking on |
 | `--preserve-thinking` | preserve closed-turn assistant reasoning by default | off |
+| `--tolerant-tool-calls` | recover complete Qwen calls with malformed wrapper/suffix output | off |
 | `--cors` | permissive browser CORS headers | off |
 | `--temperature F` | process-level temperature override | unset |
 | `--top-p F` | process-level top-p override | unset |
@@ -730,7 +731,11 @@ a following compatible turn can reuse it. Output-limit and context-capacity fini
 
 Function tools are rendered into the model prompt and generated calls are parsed into protocol
 responses. NInfer does not execute tools and does not enforce client JSON Schema through constrained
-decoding.
+decoding. `--tolerant-tool-calls` is an opt-in recovery mode for Qwen3.6 output drift: it can
+recover a complete function call when the model adds trailing wrapper tags, suffix text, omits the
+outer `</tool_call>` tag, or emits the call before `</think>`. For streaming tool requests, reasoning is
+buffered until parsing completes so malformed call text is not emitted as thinking first. It does not
+execute incomplete calls.
 
 Prompt-token usage includes chat-template and expanded media tokens. Generated-token usage comes
 from accepted output token IDs, including a stop token whose decoded text may be withheld.

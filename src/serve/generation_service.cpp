@@ -387,9 +387,7 @@ int GenerationService::count_prompt_tokens(const GenerationRequest& request,
 GenerationOutcome GenerationService::run(PreparedRequest& prepared, const StreamSink* sink,
                                          std::function<bool()> is_cancelled) {
     std::unique_ptr<ServiceOutputSink> output_sink;
-    if (sink != nullptr) {
-        output_sink = std::make_unique<ServiceOutputSink>(*sink, prepared.tool_capable);
-    }
+    if (sink != nullptr) { output_sink = std::make_unique<ServiceOutputSink>(*sink, prepared.tool_capable); }
     ninfer::OutputSink* public_sink = output_sink.get();
     ninfer::CancellationView cancellation;
     if (is_cancelled || (sink != nullptr && sink->is_cancelled)) {
@@ -438,10 +436,25 @@ GenerationOutcome GenerationService::run(PreparedRequest& prepared, const Stream
     bool is_tool_call_response = false;
     if (prepared.tool_capable) {
         ParsedToolCallOutput parsed = parse_qwen_tool_call_output(
-            outcome.text, prepared.tool_name_max_length, prepared.tool_argument_types);
+            outcome.text, prepared.tool_name_max_length, prepared.tool_argument_types,
+            options_.tolerant_tool_calls);
         outcome.text          = std::move(parsed.content);
         is_tool_call_response = parsed.is_tool_call_response;
-        if (is_tool_call_response) { outcome.tool_calls = std::move(parsed.tool_calls); }
+        if (is_tool_call_response) {
+            outcome.tool_calls = std::move(parsed.tool_calls);
+        } else if (options_.tolerant_tool_calls && !outcome.reasoning.empty()) {
+            // A Qwen drift can emit the call before </think>. In that case the
+            // frontend correctly classifies it as reasoning, so give the same
+            // tolerant recovery path a chance before returning raw XML.
+            ParsedToolCallOutput reasoning_parsed = parse_qwen_tool_call_output(
+                outcome.reasoning, prepared.tool_name_max_length, prepared.tool_argument_types,
+                true);
+            if (reasoning_parsed.is_tool_call_response) {
+                outcome.reasoning     = std::move(reasoning_parsed.content);
+                outcome.tool_calls    = std::move(reasoning_parsed.tool_calls);
+                is_tool_call_response = true;
+            }
+        }
     }
     if (output_sink) {
         outcome.streamed_content_bytes = output_sink->finish(is_tool_call_response);

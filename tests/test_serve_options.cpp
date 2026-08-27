@@ -59,6 +59,8 @@ int main() {
                       "model id override is unexpectedly configured by default");
     failures += check(!defaults.default_thinking_budget,
                       "thinking budget is unexpectedly limited by default");
+    failures += check(!defaults.tolerant_tool_calls,
+                      "tolerant tool-call recovery is not disabled by default");
     failures += check(
         !defaults.sampling_overrides.temperature && !defaults.sampling_overrides.top_p &&
             !defaults.sampling_overrides.top_k && !defaults.sampling_overrides.presence_penalty &&
@@ -138,6 +140,7 @@ int main() {
                                            "--log-stats-interval-ms",
                                            "0",
                                            "--preserve-thinking",
+                                           "--tolerant-tool-calls",
                                            "--media-cache-mib",
                                            "256",
                                            "--media-live-mib",
@@ -152,6 +155,8 @@ int main() {
     failures += check(configured.enable_vision, "--vision did not enable Vision");
     failures +=
         check(configured.preserve_thinking, "--preserve-thinking did not reach serving options");
+    failures += check(configured.tolerant_tool_calls,
+                      "--tolerant-tool-calls did not enable recovery");
     failures +=
         check(configured.max_concurrency == 4, "--max-concurrency did not reach serving options");
     failures += check(configured.max_context == 4096 &&
@@ -266,6 +271,9 @@ int main() {
                       "serve help omits --default-thinking-budget");
     failures += check(serve_usage_text("ninfer-serve").find("--vision") != std::string::npos,
                       "serve help omits --vision");
+    failures += check(serve_usage_text("ninfer-serve").find("--tolerant-tool-calls") !=
+                          std::string::npos,
+                      "serve help omits --tolerant-tool-calls");
     failures +=
         check(serve_usage_text("ninfer-serve").find("--log-stats-interval-ms") != std::string::npos,
               "serve help omits --log-stats-interval-ms");
